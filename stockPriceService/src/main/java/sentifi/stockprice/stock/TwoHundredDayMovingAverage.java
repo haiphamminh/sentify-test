@@ -1,8 +1,6 @@
 package sentifi.stockprice.stock;
 
-import java.text.DateFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -10,16 +8,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import sentifi.stockprice.utils.ObjUtils;
 import sentifi.stockprice.cache.ClosePriceCacheData;
 
 public class TwoHundredDayMovingAverage {
 
 	private static Integer NO_DAYS = 200;
-	private static DateFormat df;
-
-	static {
-		df = new SimpleDateFormat("yyyy-MM-dd");
-	}
 
 	private String ticker;
 	private double average;
@@ -70,7 +64,7 @@ public class TwoHundredDayMovingAverage {
 		while (i < data.size()) {
 			Date date = new Date();
 			try {
-				date = df.parse(String.valueOf(data.get(i).get(ClosePriceCacheData.DATECLOSE_IDX)));
+				date = ObjUtils.getDateFormat().parse(String.valueOf(data.get(i).get(ClosePriceCacheData.DATECLOSE_IDX)));
 			} catch (ParseException e) {
 				e.printStackTrace();
 			}

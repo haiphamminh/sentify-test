@@ -1,8 +1,6 @@
 package sentifi.stockprice.stock;
 
-import java.text.DateFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -13,17 +11,12 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import sentifi.stockprice.cache.ClosePriceCacheData;
+import sentifi.stockprice.utils.ObjUtils;
 
 public class ClosePrice {
 
 	private String ticker;
 	private List<List<String>> dateCloses;
-
-	private static DateFormat df;
-
-	static {
-		df = new SimpleDateFormat("yyyy-MM-dd");
-	}
 
 	public ClosePrice(String ticker, Date startDate, Date endDate, ClosePriceCacheData cpcd) {
 		this.ticker = ticker;
@@ -32,7 +25,7 @@ public class ClosePrice {
 		for (List<Object> value : cpcd.getData()) {
 			String date = value.get(ClosePriceCacheData.DATECLOSE_IDX).toString();
 			try {
-				Date d = df.parse(date);
+				Date d = ObjUtils.getDateFormat().parse(date);
 				if (d.compareTo(startDate) >= 0 && d.compareTo(endDate) <= 0) {
 					List<String> data = new ArrayList<String>();
 					data.add(date);
@@ -44,7 +37,7 @@ public class ClosePrice {
 			}
 		}
 	}
-	
+
 	/*
 	 * public ClosePrice(String ticker, Date startDate, Date endDate, DataSet
 	 * dataset) { this.ticker = ticker; this.dateCloses = new
@@ -68,7 +61,7 @@ public class ClosePrice {
 		int i = 1;
 		for (List<String> dateClose : this.dateCloses) {
 			ArrayNode dateCloseNode = jnf.arrayNode();
-			String fieldName= String.format("DateClose_%d", i++);
+			String fieldName = String.format("DateClose_%d", i++);
 			dateClosesNode.set(fieldName, dateCloseNode);
 			for (String value : dateClose) {
 				dateCloseNode.add(value);

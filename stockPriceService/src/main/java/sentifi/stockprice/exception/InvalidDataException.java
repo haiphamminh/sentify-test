@@ -7,6 +7,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class InvalidDataException extends Throwable {
 
 	private static final long serialVersionUID = 1L;
+	
+	public static final int ERR_CODE = 404;
+	public static final String INVALID_STARTDATE = "An invalid start date is provided";
+	public static final String INVALID_ENDDATE = "An invalid end date is provided";
+	public static final String INVALID_RANGE_OF_DATE = "An invalid range of dates is provided";
+	public static final String INVALID_TICKER_SYMBOL = "An invalid ticker symbol is provided";
+	public static final String NO_DATA_FOR_START_DATE = "No data for the start date. The first possible start date is %s";
+	public static final String NO_TICKER_SYMBOL = "No ticker symbol is provided";
 
 	private String ticker;
 	private String code;
@@ -16,6 +24,11 @@ public class InvalidDataException extends Throwable {
 		this.ticker = ticker;
 		this.code = code;
 		this.message = message;
+	}
+	
+	public InvalidDataException(String ticker, String message) {
+		this(ticker, String.valueOf(ERR_CODE), message);
+		
 	}
 
 	public String getTicker() {

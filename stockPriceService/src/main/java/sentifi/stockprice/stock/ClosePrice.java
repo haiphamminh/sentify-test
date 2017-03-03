@@ -1,6 +1,5 @@
 package sentifi.stockprice.stock;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -11,7 +10,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import sentifi.stockprice.cache.ClosePriceCacheData;
-import sentifi.stockprice.utils.ObjUtils;
+import sentifi.stockprice.utils.Utils;
 
 public class ClosePrice {
 
@@ -24,32 +23,15 @@ public class ClosePrice {
 
 		for (List<Object> value : cpcd.getData()) {
 			String date = value.get(ClosePriceCacheData.DATECLOSE_IDX).toString();
-			try {
-				Date d = ObjUtils.getDateFormat().parse(date);
-				if (d.compareTo(startDate) >= 0 && d.compareTo(endDate) <= 0) {
-					List<String> data = new ArrayList<String>();
-					data.add(date);
-					data.add(value.get(ClosePriceCacheData.CLOSEPRICE_IDX).toString());
-					this.dateCloses.add(data);
-				}
-			} catch (ParseException e) {
-				e.printStackTrace();
+			Date d = Utils.parseDate(date);
+			if (d.compareTo(startDate) >= 0 && d.compareTo(endDate) <= 0) {
+				List<String> data = new ArrayList<String>();
+				data.add(date);
+				data.add(value.get(ClosePriceCacheData.CLOSEPRICE_IDX).toString());
+				this.dateCloses.add(data);
 			}
 		}
 	}
-
-	/*
-	 * public ClosePrice(String ticker, Date startDate, Date endDate, DataSet
-	 * dataset) { this.ticker = ticker; this.dateCloses = new
-	 * ArrayList<List<String>>();
-	 * 
-	 * for (List<Object> value : dataset.getData()) { String date =
-	 * value.get(0).toString(); try { Date d = df.parse(date); if
-	 * (d.compareTo(startDate) >= 0 && d.compareTo(endDate) <= 0) { List<String>
-	 * data = new ArrayList<String>(); data.add(date);
-	 * data.add(value.get(4).toString()); this.dateCloses.add(data); } } catch
-	 * (ParseException e) { e.printStackTrace(); } } }
-	 */
 
 	public JsonNode convertClosePriceAsJson() {
 		JsonNodeFactory jnf = JsonNodeFactory.instance;
@@ -61,7 +43,10 @@ public class ClosePrice {
 		int i = 1;
 		for (List<String> dateClose : this.dateCloses) {
 			ArrayNode dateCloseNode = jnf.arrayNode();
-			String fieldName = String.format("DateClose_%d", i++);
+			String fieldName = "DateClose";
+			if (this.dateCloses.size() > 1) {
+				fieldName = String.format("DateClose_%d", i++);
+			}
 			dateClosesNode.set(fieldName, dateCloseNode);
 			for (String value : dateClose) {
 				dateCloseNode.add(value);

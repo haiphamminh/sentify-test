@@ -13,12 +13,8 @@ import sentifi.stockprice.stock.IStockPriceService;
 @RestController
 public class StockPriceController {
 
-	private final IStockPriceService stockPriceService;
-
 	@Autowired
-	public StockPriceController(IStockPriceService stockPriceService) {
-		this.stockPriceService = stockPriceService;
-	}
+	private IStockPriceService stockPriceService;
 
 	@RequestMapping(value = "/api/v2/{ticker_symbol}/closePrice", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
 	public String closePriceRestApi(@PathVariable String ticker_symbol,

@@ -1,7 +1,6 @@
 package sentifi.stockprice.stock;
 
 import java.net.URL;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -15,7 +14,7 @@ import sentifi.stockprice.cache.ClosePriceCache;
 import sentifi.stockprice.cache.ClosePriceCacheData;
 import sentifi.stockprice.exception.InvalidDataException;
 
-import sentifi.stockprice.utils.ObjUtils;
+import sentifi.stockprice.utils.Utils;
 
 @Service
 public class StockPriceService implements IStockPriceService {
@@ -23,26 +22,23 @@ public class StockPriceService implements IStockPriceService {
 	@Override
 	public String closePriceRestApi(String ticker_symbol, String startDateStr, String endDateStr) {
 
-		Date startDate = null, endDate = null;
-		try {
-			startDate = ObjUtils.getDateFormat().parse(startDateStr);
-		} catch (ParseException e) {
-			return generateErrorMessage(ticker_symbol, "404", "An invalid start date is provided");
+		Date startDate = Utils.parseDate(startDateStr);
+		if (startDate == null) {
+			return generateErrorMessage(ticker_symbol, InvalidDataException.INVALID_STARTDATE);
 		}
 
-		try {
-			endDate = ObjUtils.getDateFormat().parse(endDateStr);
-		} catch (ParseException e) {
-			return generateErrorMessage(ticker_symbol, "404", "An invalid end date is provided");
+		Date endDate = Utils.parseDate(endDateStr);
+		if (endDate == null) {
+			return generateErrorMessage(ticker_symbol, InvalidDataException.INVALID_ENDDATE);
 		}
 
 		if (startDate.compareTo(endDate) > 0) {
-			return generateErrorMessage(ticker_symbol, "404", "An invalid range of dates is provided");
+			return generateErrorMessage(ticker_symbol, InvalidDataException.INVALID_RANGE_OF_DATE);
 		}
 
 		ClosePriceCacheData cpcd = readAndCacheStockData(ticker_symbol);
 		if (cpcd == null) {
-			return generateErrorMessage(ticker_symbol, "404", "An invalid ticker symbol is provided");
+			return generateErrorMessage(ticker_symbol, InvalidDataException.INVALID_TICKER_SYMBOL);
 		}
 
 		ClosePrice cp = new ClosePrice(ticker_symbol, startDate, endDate, cpcd);
@@ -61,9 +57,9 @@ public class StockPriceService implements IStockPriceService {
 
 		if (thdma.getAverage() == -1) {
 			ClosePriceCacheData cpcd = ClosePriceCache.getInstance().get(ticker_symbol);
-			String msg = String.format("No data for the start date. The first possible start date is %s",
+			String msg = String.format(InvalidDataException.NO_DATA_FOR_START_DATE,
 					cpcd.getData().get(0).get(ClosePriceCacheData.DATECLOSE_IDX));
-			return generateErrorMessage(ticker_symbol, "404", msg);
+			return generateErrorMessage(ticker_symbol, msg);
 		}
 		return thdma.convert200dmaAsString();
 	}
@@ -71,10 +67,13 @@ public class StockPriceService implements IStockPriceService {
 	@Override
 	public String twoHundredDayMovingAverageForTickerSymbolsRestApi(String startDateStr, String tickerSymbols) {
 
+		if (tickerSymbols.isEmpty()) {
+			return generateErrorMessage("", InvalidDataException.NO_TICKER_SYMBOL);
+		}
+
 		String[] splitTickerSymbols = tickerSymbols.split(",");
 
-		JsonNodeFactory jnf = JsonNodeFactory.instance;
-		ArrayNode content = jnf.arrayNode();
+		ArrayNode content = JsonNodeFactory.instance.arrayNode();
 		for (String ticker_symbol : splitTickerSymbols) {
 			TwoHundredDayMovingAverage thdma = null;
 			try {
@@ -85,18 +84,16 @@ public class StockPriceService implements IStockPriceService {
 
 			// no data found for start date provided, then compute 200dma of the
 			// first possible start date
-			if (thdma.getAverage() == -1) {
+			if (thdma != null && thdma.getAverage() == -1) {
 				// get cache data
 				ClosePriceCacheData cpcd = ClosePriceCache.getInstance().get(ticker_symbol);
 				if (cpcd != null) {
-					Date firstPossibleStartDate = null;
-					try {
-						firstPossibleStartDate = ObjUtils.getDateFormat()
-								.parse(cpcd.getData().get(0).get(0).toString());
-					} catch (ParseException pe) {
-						return generateErrorMessage(ticker_symbol, "404", "An invalid start date is provided");
+					Date firstPossibleStartDate = Utils
+							.parseDate(cpcd.getData().get(0).get(ClosePriceCacheData.DATECLOSE_IDX).toString());
+					if (firstPossibleStartDate == null) {
+						return generateErrorMessage(ticker_symbol, InvalidDataException.INVALID_STARTDATE);
 					}
-					thdma = new TwoHundredDayMovingAverage(ticker_symbol, firstPossibleStartDate, cpcd);
+					thdma = new TwoHundredDayMovingAverage(ticker_symbol, firstPossibleStartDate, cpcd, true);
 				}
 			}
 
@@ -116,7 +113,7 @@ public class StockPriceService implements IStockPriceService {
 		if (cpcd == null) {
 			String url = String.format("https://www.quandl.com/api/v3/datasets/WIKI/%s.json", ticker_symbol);
 			try {
-				stockInfo = ObjUtils.getObjectMapper().readValue(new URL(url), StockInfo.class);
+				stockInfo = Utils.getObjectMapper().readValue(new URL(url), StockInfo.class);
 			} catch (Exception e) {
 				return null;
 			}
@@ -137,23 +134,21 @@ public class StockPriceService implements IStockPriceService {
 	private TwoHundredDayMovingAverage request200dma(String ticker_symbol, String startDateStr)
 			throws InvalidDataException {
 
-		Date startDate = null;
-		try {
-			startDate = ObjUtils.getDateFormat().parse(startDateStr);
-		} catch (ParseException e) {
-			throw new InvalidDataException(ticker_symbol, "404", "An invalid start date is provided");
+		Date startDate = Utils.parseDate(startDateStr);
+		if (startDate == null) {
+			throw new InvalidDataException(ticker_symbol, InvalidDataException.INVALID_STARTDATE);
 		}
 
 		ClosePriceCacheData cpcd = readAndCacheStockData(ticker_symbol);
 		if (cpcd == null) {
-			throw new InvalidDataException(ticker_symbol, "404", "An invalid ticker symbol is provided");
+			throw new InvalidDataException(ticker_symbol, InvalidDataException.INVALID_TICKER_SYMBOL);
 		}
 
 		return new TwoHundredDayMovingAverage(ticker_symbol, startDate, cpcd);
 	}
 
-	private String generateErrorMessage(String ticker, String code, String message) {
-		return generateErrorMessage(new InvalidDataException(ticker, code, message));
+	private String generateErrorMessage(String ticker, String message) {
+		return generateErrorMessage(new InvalidDataException(ticker, message));
 	}
 
 	private String generateErrorMessage(InvalidDataException ide) {

@@ -32,7 +32,7 @@ public class Utils {
 		}
 		return date;
 	}
-	
+
 	public static String formatDate(Date date) {
 		return df.format(date);
 	}

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
+import sentifi.stockprice.StockPricePropertiesComponent;
 import sentifi.stockprice.cache.ClosePriceCache;
 import sentifi.stockprice.cache.ClosePriceCacheData;
 import sentifi.stockprice.exception.InvalidDataException;
@@ -24,21 +25,25 @@ public class StockPriceService implements IStockPriceService {
 
 		Date startDate = Utils.parseDate(startDateStr);
 		if (startDate == null) {
-			return generateErrorMessage(ticker_symbol, InvalidDataException.INVALID_STARTDATE);
+			return generateErrorMessage(ticker_symbol,
+					StockPricePropertiesComponent.getInstance().getInvalidStartDateMsg());
 		}
 
 		Date endDate = Utils.parseDate(endDateStr);
 		if (endDate == null) {
-			return generateErrorMessage(ticker_symbol, InvalidDataException.INVALID_ENDDATE);
+			return generateErrorMessage(ticker_symbol,
+					StockPricePropertiesComponent.getInstance().getInvalidEndDateMsg());
 		}
 
 		if (startDate.compareTo(endDate) > 0) {
-			return generateErrorMessage(ticker_symbol, InvalidDataException.INVALID_RANGE_OF_DATE);
+			return generateErrorMessage(ticker_symbol,
+					StockPricePropertiesComponent.getInstance().getInvalidRangeOfDatesMsg());
 		}
 
 		ClosePriceCacheData cpcd = readAndCacheStockData(ticker_symbol);
 		if (cpcd == null) {
-			return generateErrorMessage(ticker_symbol, InvalidDataException.INVALID_TICKER_SYMBOL);
+			return generateErrorMessage(ticker_symbol,
+					StockPricePropertiesComponent.getInstance().getInvalidTickerSymbolMsg());
 		}
 
 		ClosePrice cp = new ClosePrice(ticker_symbol, startDate, endDate, cpcd);
@@ -57,7 +62,7 @@ public class StockPriceService implements IStockPriceService {
 
 		if (thdma.getAverage() == -1) {
 			ClosePriceCacheData cpcd = ClosePriceCache.getInstance().get(ticker_symbol);
-			String msg = String.format(InvalidDataException.NO_DATA_FOR_START_DATE,
+			String msg = String.format(StockPricePropertiesComponent.getInstance().getNoDataForStartDateMsg(),
 					cpcd.getData().get(0).get(ClosePriceCacheData.DATECLOSE_IDX));
 			return generateErrorMessage(ticker_symbol, msg);
 		}
@@ -68,7 +73,7 @@ public class StockPriceService implements IStockPriceService {
 	public String twoHundredDayMovingAverageForTickerSymbolsRestApi(String startDateStr, String tickerSymbols) {
 
 		if (tickerSymbols.isEmpty()) {
-			return generateErrorMessage("", InvalidDataException.NO_TICKER_SYMBOL);
+			return generateErrorMessage("", StockPricePropertiesComponent.getInstance().getNoTickerSymbolMsg());
 		}
 
 		String[] splitTickerSymbols = tickerSymbols.split(",");
@@ -77,28 +82,35 @@ public class StockPriceService implements IStockPriceService {
 		for (String ticker_symbol : splitTickerSymbols) {
 			TwoHundredDayMovingAverage thdma = null;
 			try {
+				ticker_symbol = ticker_symbol.trim();
 				thdma = request200dma(ticker_symbol, startDateStr);
 			} catch (InvalidDataException e) {
 				content.add(e.convertIdeAsJsonNode());
 			}
 
-			// no data found for start date provided, then compute 200dma of the
-			// first possible start date
-			if (thdma != null && thdma.getAverage() == -1) {
-				// get cache data
-				ClosePriceCacheData cpcd = ClosePriceCache.getInstance().get(ticker_symbol);
-				if (cpcd != null) {
-					Date firstPossibleStartDate = Utils
-							.parseDate(cpcd.getData().get(0).get(ClosePriceCacheData.DATECLOSE_IDX).toString());
-					if (firstPossibleStartDate == null) {
-						return generateErrorMessage(ticker_symbol, InvalidDataException.INVALID_STARTDATE);
-					}
-					thdma = new TwoHundredDayMovingAverage(ticker_symbol, firstPossibleStartDate, cpcd, true);
-				}
-			}
-
 			if (thdma != null) {
-				content.add(thdma.convert200dmaAsJsonNode());
+				// no data found for start date provided, then recompute 200dma
+				// of the first possible start date
+				if (thdma.getAverage() == -1) {
+					// get cache data
+					ClosePriceCacheData cpcd = ClosePriceCache.getInstance().get(ticker_symbol);
+					if (cpcd != null) {
+						String dateStr = cpcd.getData().get(0).get(ClosePriceCacheData.DATECLOSE_IDX).toString();
+						Date firstPossibleStartDate = Utils.parseDate(dateStr);
+						if (firstPossibleStartDate == null) {
+							return generateErrorMessage(ticker_symbol,
+									StockPricePropertiesComponent.getInstance().getInvalidStartDateMsg());
+						}
+						thdma = new TwoHundredDayMovingAverage(ticker_symbol, firstPossibleStartDate, cpcd);
+						String msg = String.format(
+								StockPricePropertiesComponent.getInstance().getDataForFirstPossibleStartDateMsg(),
+								dateStr);
+						content.add(thdma.convert200dmaAsJsonNode(true, msg));
+					}
+
+				} else {
+					content.add(thdma.convert200dmaAsJsonNode());
+				}
 			}
 		}
 
@@ -136,12 +148,14 @@ public class StockPriceService implements IStockPriceService {
 
 		Date startDate = Utils.parseDate(startDateStr);
 		if (startDate == null) {
-			throw new InvalidDataException(ticker_symbol, InvalidDataException.INVALID_STARTDATE);
+			throw new InvalidDataException(ticker_symbol,
+					StockPricePropertiesComponent.getInstance().getInvalidStartDateMsg());
 		}
 
 		ClosePriceCacheData cpcd = readAndCacheStockData(ticker_symbol);
 		if (cpcd == null) {
-			throw new InvalidDataException(ticker_symbol, InvalidDataException.INVALID_TICKER_SYMBOL);
+			throw new InvalidDataException(ticker_symbol,
+					StockPricePropertiesComponent.getInstance().getInvalidTickerSymbolMsg());
 		}
 
 		return new TwoHundredDayMovingAverage(ticker_symbol, startDate, cpcd);

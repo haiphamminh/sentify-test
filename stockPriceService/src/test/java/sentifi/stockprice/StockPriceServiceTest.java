@@ -23,7 +23,6 @@ import sentifi.stockprice.utils.Utils;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -47,22 +46,26 @@ public class StockPriceServiceTest {
 
 	@Test
 	public void closePriceRestApi_InvalidStartDate() {
-		assert_closePrice("fakeTicker", "invalidDate", "invalidDate", InvalidDataException.INVALID_STARTDATE);
+		assert_closePrice("fakeTicker", "invalidDate", "invalidDate",
+				StockPricePropertiesComponent.getInstance().getInvalidStartDateMsg());
 	}
 
 	@Test
 	public void closePriceRestApi_InvalidEndDate() {
-		assert_closePrice("fakeTicker", "2017-02-24", "invalidDate", InvalidDataException.INVALID_ENDDATE);
+		assert_closePrice("fakeTicker", "2017-02-24", "invalidDate",
+				StockPricePropertiesComponent.getInstance().getInvalidEndDateMsg());
 	}
 
 	@Test
 	public void closePriceRestApi_InvalidRangeOfDate() {
-		assert_closePrice("fakeTicker", "2017-02-30", "2017-02-20", InvalidDataException.INVALID_RANGE_OF_DATE);
+		assert_closePrice("fakeTicker", "2017-02-30", "2017-02-20",
+				StockPricePropertiesComponent.getInstance().getInvalidRangeOfDatesMsg());
 	}
 
 	@Test
 	public void closePriceRestApi_InvalidTickerSymbol() {
-		assert_closePrice("fakeTicker", "2017-02-24", "2017-03-01", InvalidDataException.INVALID_TICKER_SYMBOL);
+		assert_closePrice("fakeTicker", "2017-02-24", "2017-03-01",
+				StockPricePropertiesComponent.getInstance().getInvalidTickerSymbolMsg());
 	}
 
 	@Test
@@ -77,23 +80,17 @@ public class StockPriceServiceTest {
 
 		String result = stockPriceService.closePriceRestApi(fakeTicker, startDateStr, endDateStr);
 
-		Date startDate = null, endDate = null;
-		try {
-			startDate = Utils.getDateFormat().parse(startDateStr);
-			endDate = Utils.getDateFormat().parse(endDateStr);
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
-
 		PowerMock.verify(stockPriceService);
 
-		assertThat(result)
-				.isEqualTo((new ClosePrice(fakeTicker, startDate, endDate, cpcd)).convertClosePriceAsString());
+		assertThat(result).isEqualTo(
+				(new ClosePrice(fakeTicker, Utils.parseDate(startDateStr), Utils.parseDate(endDateStr), cpcd))
+						.convertClosePriceAsString());
 	}
 
 	@Test
 	public void twoHundredDayMovingAverageRestApi_InvalidStartDate() {
-		assert_200dma("fakeTicker", "invalidStartDate", InvalidDataException.INVALID_STARTDATE);
+		assert_200dma("fakeTicker", "invalidStartDate",
+				StockPricePropertiesComponent.getInstance().getInvalidStartDateMsg());
 	}
 
 	@Test
@@ -105,7 +102,7 @@ public class StockPriceServiceTest {
 
 		PowerMock.replay(stockPriceService);
 
-		String message = String.format(InvalidDataException.NO_DATA_FOR_START_DATE,
+		String message = String.format(StockPricePropertiesComponent.getInstance().getNoDataForStartDateMsg(),
 				cpcd.getData().get(0).get(ClosePriceCacheData.DATECLOSE_IDX));
 		assert_200dma("fakeTicker", "2017-03-05", message);
 
@@ -123,25 +120,18 @@ public class StockPriceServiceTest {
 
 		String result = stockPriceService.twoHundredDayMovingAverageRestApi(fakeTicker, startDateStr);
 
-		Date startDate = null;
-		try {
-			startDate = Utils.getDateFormat().parse(startDateStr);
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
-
 		PowerMock.verify(stockPriceService);
 
-		assertThat(result)
-				.isEqualTo((new TwoHundredDayMovingAverage(fakeTicker, startDate, cpcd)).convert200dmaAsString());
+		assertThat(result).isEqualTo((new TwoHundredDayMovingAverage(fakeTicker, Utils.parseDate(startDateStr), cpcd))
+				.convert200dmaAsString());
 	}
 
 	@Test
 	public void twoHundredDayMovingAverageForTickerSymbolsRestApi_NoTickerSymbols() {
 		String result = stockPriceService.twoHundredDayMovingAverageForTickerSymbolsRestApi("fakeDate", "");
 
-		String expectedResult = (new InvalidDataException("", InvalidDataException.NO_TICKER_SYMBOL))
-				.convertIdeAsJsonString();
+		String expectedResult = (new InvalidDataException("",
+				StockPricePropertiesComponent.getInstance().getNoTickerSymbolMsg())).convertIdeAsJsonString();
 
 		assertThat(result).isEqualTo(expectedResult);
 	}
@@ -149,7 +139,7 @@ public class StockPriceServiceTest {
 	@Test
 	public void twoHundredDayMovingAverageForTickerSymbolsRestApi_InvalidStartDate() {
 		assert_200dmaForTickerSymbols(new String[] { "GE" }, "fakeDate",
-				new InvalidDataException("GE", InvalidDataException.INVALID_STARTDATE));
+				new InvalidDataException("GE", StockPricePropertiesComponent.getInstance().getInvalidStartDateMsg()));
 	}
 
 	@Test
@@ -164,12 +154,7 @@ public class StockPriceServiceTest {
 		String result = stockPriceService.twoHundredDayMovingAverageForTickerSymbolsRestApi(startDateStr,
 				String.join(",", tickerSymbols));
 
-		Date startDate = null;
-		try {
-			startDate = Utils.getDateFormat().parse(startDateStr);
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
+		Date startDate = Utils.parseDate(startDateStr);
 
 		String expectedResult = TwoHundredDayMovingAverage.convertMultiple200dmaAsString(tickerSymbols,
 				new TwoHundredDayMovingAverage(tickerSymbols[0], startDate, cpcd),

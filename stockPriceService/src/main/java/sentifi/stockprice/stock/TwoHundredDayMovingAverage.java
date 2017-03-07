@@ -15,25 +15,16 @@ import sentifi.stockprice.exception.InvalidDataException;
 public class TwoHundredDayMovingAverage {
 
 	private static final Integer NO_DAYS = 200;
-	private static final String NO_DATA_FOR_STARTDATE = "No data for start date provided. The first possible start date %s is provided";
 
 	private String ticker;
 	private double average;
-	private boolean isRecomputed;
-	private String firstPossibleStartDate;
 
 	public TwoHundredDayMovingAverage() {
 	}
 
 	public TwoHundredDayMovingAverage(String ticker, Date startDate, ClosePriceCacheData cpcd) {
-		this(ticker, startDate, cpcd, false);
-	}
-
-	public TwoHundredDayMovingAverage(String ticker, Date startDate, ClosePriceCacheData cpcd, boolean isRecomputed) {
 		this.ticker = ticker;
 		this.average = computeAverage(startDate, cpcd.getData());
-		this.isRecomputed = isRecomputed;
-		this.firstPossibleStartDate = Utils.formatDate(startDate);
 	}
 
 	public String getTicker() {
@@ -53,6 +44,10 @@ public class TwoHundredDayMovingAverage {
 	}
 
 	public JsonNode convert200dmaAsJsonNode() {
+		return convert200dmaAsJsonNode(false, null);
+	}
+
+	public JsonNode convert200dmaAsJsonNode(boolean isRecomputed, String msg) {
 		ObjectNode contentNode = JsonNodeFactory.instance.objectNode();
 		ObjectNode thdmaNode = contentNode.objectNode();
 
@@ -60,7 +55,6 @@ public class TwoHundredDayMovingAverage {
 		thdmaNode.put("Avg", String.valueOf(this.average));
 
 		if (isRecomputed) {
-			String msg = String.format(NO_DATA_FOR_STARTDATE, this.firstPossibleStartDate);
 			thdmaNode.put("Message", msg);
 		}
 
@@ -69,7 +63,7 @@ public class TwoHundredDayMovingAverage {
 	}
 
 	public String convert200dmaAsString() {
-		return convert200dmaAsJsonNode().toString();
+		return convert200dmaAsJsonNode(false, null).toString();
 	}
 
 	private double computeAverage(Date startDate, List<List<Object>> data) {
